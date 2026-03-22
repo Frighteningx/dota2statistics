@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dota 2 Pro Draft Analyzer</title>
+    <style>
+        :root {
+            /* Paleta Oficial Dota 2 */
+            --dota-red: #B44335;
+            --dota-red-bright: #E44D3A;
+            --dota-dark: #1C1D20;
+            --dota-panel: #2B2D33;
+            --dota-gold: #C0A05F;
+            --dota-text: #D4D4D4;
+            --dota-border: #42464F;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dota-dark);
+            background-image: radial-gradient(circle at 50% 0%, #302626 0%, transparent 60%);
+            color: var(--dota-text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(to bottom, #111, var(--dota-dark));
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid var(--dota-red);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+        }
+
+        h1 { margin: 0; color: #fff; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; }
+        h1 span { color: var(--dota-red-bright); }
+        h3 { color: var(--dota-gold); margin-top: 0; text-transform: uppercase; font-size: 1rem; border-bottom: 1px solid var(--dota-border); padding-bottom: 8px; }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 25px;
+            padding: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--dota-panel);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4);
+            border: 1px solid var(--dota-border);
+        }
+
+        .enemy-slot {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 12px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid var(--dota-red);
+        }
+
+        select {
+            flex-grow: 1;
+            padding: 10px;
+            background: #1A1A1A;
+            color: var(--dota-text);
+            border: 1px solid var(--dota-border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        select:focus { border-color: var(--dota-gold); }
+
+        .slot-img {
+            width: 70px;
+            height: 39px;
+            background: #000;
+            object-fit: cover;
+            border: 1px solid var(--dota-border);
+        }
+
+        .btn-analyze {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(to bottom, var(--dota-red-bright), var(--dota-red));
+            color: white;
+            border: none;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.2s;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .btn-analyze:hover { filter: brightness(1.2); transform: translateY(-1px); }
+        .btn-analyze:active { transform: translateY(1px); box-shadow: none; }
+
+        .recommendation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, rgba(43,45,51,1) 0%, rgba(28,29,32,1) 100%);
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid var(--dota-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--dota-gold);
+        }
+
+        .item-tag {
+            display: inline-block;
+            background: rgba(0,0,0,0.6);
+            color: var(--dota-gold);
+            padding: 5px 10px;
+            border-radius: 2px;
+            font-size: 0.8rem;
+            margin: 4px;
+            border: 1px solid var(--dota-border);
+        }
+
+        .item-tag.core { color: var(--dota-text); border-color: #555; }
+        .item-tag.situational { color: var(--dota-red-bright); border-color: var(--dota-red); }
+
+        .winrate-badge {
+            font-size: 1.4rem;
+            color: #73D35B; /* Verde victoria clásico */
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        .loader { text-align: center; color: var(--dota-gold); font-weight: bold; display: none; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>DOTA 2 <span>Draft</span> Analyzer</h1>
+    <p style="color: var(--dota-gold); margin: 5px 0 0 0; font-size: 0.9rem;">Intelligence is Power</p>
+</header>
+
+<div class="main-layout">
+    <aside class="card">
+        <h3>Draft Enemigo</h3>
+        <div id="enemySlots">
+            <div class="enemy-slot"><img id="img-0" class="slot-img"><select class="hero-sel" id="sel-0" onchange="updateIcon(0)"></select></div>
+            <div class="enemy-slot"><img id="img-1" class="slot-img"><select class="hero-sel" id="sel-1" onchange="updateIcon(1)"></select></div>
+            <div class="enemy-slot"><img id="img-2" class="slot-img"><select class="hero-sel" id="sel-2" onchange="updateIcon(2)"></select></div>
+            <div class="enemy-slot"><img id="img-3" class="slot-img"><select class="hero-sel" id="sel-3" onchange="updateIcon(3)"></select></div>
+            <div class="enemy-slot"><img id="img-4" class="slot-img"><select class="hero-sel" id="sel-4" onchange="updateIcon(4)"></select></div>
+        </div>
+        <button class="btn-analyze" onclick="processDraft()">Analizar Ventaja</button>
+    </aside>
+
+    <main class="card">
+        <h3>Tus Mejores Opciones & Builds</h3>
+        <div id="loader" class="loader">Calculando matrices de probabilidad y builds...</div>
+        <div id="resultsArea" class="recommendation-grid">
+            <p style="color: #888; text-align: center; grid-column: 1/-1;">Selecciona el equipo enemigo para procesar la data.</p>
+        </div>
+    </main>
+</div>
+
+<script>
+    const API = "https://api.opendota.com/api";
+    const IMG_URL = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/";
+    let heroes = [];
+
+    // Diccionario de Mecánicas (Hardcoded para análisis heurístico)
+    const mechanics = {
+        healers: ["Necrophos", "Huskar", "Alchemist", "Io", "Chen", "Enchantress", "Witch Doctor", "Dazzle"],
+        evasion: ["Phantom Assassin", "Windranger", "Riki", "Brewmaster", "Tinker"],
+        illusions: ["Phantom Lancer", "Naga Siren", "Chaos Knight", "Terrorblade", "Meepo"],
+        tanks: ["Axe", "Centaur Warrunner", "Bristleback", "Tidehunter", "Primal Beast"]
+    };
+
+    async function init() {
+        try {
+            const resp = await fetch(`${API}/heroes`);
+            heroes = await resp.json();
+            heroes.sort((a,b) => a.localized_name.localeCompare(b.localized_name));
+            
+            document.querySelectorAll('.hero-sel').forEach(sel => {
+                sel.innerHTML = `<option value="">-- Seleccionar Héroe --</option>` + 
+                    heroes.map(h => `<option value="${h.id}">${h.localized_name}</option>`).join('');
+            });
+        } catch (e) {
+            alert("Error conectando con OpenDota API. Intenta más tarde.");
+        }
+    }
+
+    function updateIcon(index) {
+        const id = document.getElementById(`sel-${index}`).value;
+        const hero = heroes.find(h => h.id == id);
+        if(hero) {
+            const cleanName = hero.name.replace('npc_dota_hero_', '');
+            document.getElementById(`img-${index}`).src = `${IMG_URL}${cleanName.toLowerCase()}.png`;
+        } else {
+            document.getElementById(`img-${index}`).src = "";
+        }
+    }
+
+    // Motor Analítico de Ítems
+    function calculateDynamicItems(enemyDraftIds) {
+        const enemyHeroes = enemyDraftIds.map(id => heroes.find(h => h.id == id));
+        let items = [{ name: 'BKB / Glimmer', type: 'core' }, { name: 'Blink Dagger', type: 'core' }];
+        
+        let stats = { magicWeight: 0, physicalWeight: 0, needsVessel: false, needsMkb: false, needsAoe: false, needsVanguard: false };
+
+        enemyHeroes.forEach(hero => {
+            if (!hero) return;
+            // Análisis de Daño Base
+            if (hero.roles.includes("Nuker")) stats.magicWeight++;
+            if (hero.primary_attr === "agi" || hero.roles.includes("Carry")) stats.physicalWeight++;
+            
+            // Análisis de Mecánicas Duras
+            if (mechanics.healers.includes(hero.localized_name)) stats.needsVessel = true;
+            if (mechanics.evasion.includes(hero.localized_name)) stats.needsMkb = true;
+            if (mechanics.illusions.includes(hero.localized_name)) stats.needsAoe = true;
+            if (mechanics.tanks.includes(hero.localized_name)) stats.needsVanguard = true;
+        });
+
+        // Lógica de Decisión de Ítems
+        if (stats.needsVessel) items.push({ name: 'Spirit Vessel / Skadi', type: 'situational' });
+        if (stats.needsMkb) items.push({ name: 'Monkey King Bar / Bloodthorn', type: 'situational' });
+        if (stats.needsAoe) items.push({ name: 'Mjölnir / Shiva\'s Guard', type: 'situational' });
+        
+        if (stats.magicWeight > 2) items.push({ name: 'Pipe of Insight / Mage Slayer', type: 'situational' });
+        if (stats.physicalWeight > 2) items.push({ name: 'Assault Cuirass / Crimson Guard', type: 'situational' });
+
+        return items;
+    }
+
+    async function processDraft() {
+        const loader = document.getElementById('loader');
+        const resultsArea = document.getElementById('resultsArea');
+        const selectedEnemies = Array.from(document.querySelectorAll('.hero-sel'))
+                                     .map(s => s.value)
+                                     .filter(v => v !== "");
+
+        if(selectedEnemies.length === 0) return alert("Selecciona al menos un enemigo para analizar el Draft.");
+
+        loader.style.display = "block";
+        resultsArea.innerHTML = "";
+
+        try {
+            const matchupPromises = selectedEnemies.map(id => fetch(`${API}/heroes/${id}/matchups`).then(r => r.json()));
+            const allMatchups = await Promise.all(matchupPromises);
+
+            let scores = {};
+            allMatchups.forEach(list => {
+                list.forEach(m => {
+                    if(!scores[m.hero_id]) scores[m.hero_id] = 0;
+                    if(m.games_played > 10) {
+                        scores[m.hero_id] += (m.wins / m.games_played);
+                    }
+                });
+            });
+
+            // Filtramos héroes que ya están seleccionados en el enemigo
+            let recommended = Object.keys(scores)
+                .filter(id => !selectedEnemies.includes(id))
+                .map(id => ({
+                    id: parseInt(id),
+                    score: scores[id] / selectedEnemies.length
+                }))
+                .sort((a,b) => b.score - a.score)
+                .slice(0, 6);
+
+            const recommendedItems = calculateDynamicItems(selectedEnemies);
+            renderResults(recommended, recommendedItems);
+
+        } catch (e) {
+            console.error(e);
+            resultsArea.innerHTML = `<p style="color:var(--dota-red)">Error al procesar matrices. Revisa la consola.</p>`;
+        } finally {
+            loader.style.display = "none";
+        }
+    }
+
+    function renderResults(recommended, recommendedItems) {
+        const area = document.getElementById('resultsArea');
+        
+        // Render de items calculados globalmente para el draft
+        const itemsHtml = recommendedItems.map(i => 
+            `<span class="item-tag ${i.type}">${i.name}</span>`
+        ).join('');
+
+        recommended.forEach(rec => {
+            const hInfo = heroes.find(h => h.id === rec.id);
+            const cleanName = hInfo.name.replace('npc_dota_hero_', '');
+            const wr = (rec.score * 100).toFixed(2);
+
+            area.innerHTML += `
+                <div class="hero-card">
+                    <div style="display:flex; gap:15px; align-items:center; margin-bottom: 15px;">
+                        <img src="${IMG_URL}${cleanName}.png" style="width:80px; border-radius:3px; border:1px solid var(--dota-border);">
+                        <div>
+                            <strong style="font-size: 1.1rem;">${hInfo.localized_name}</strong><br>
+                            <span class="winrate-badge">${wr}% WR</span>
+                        </div>
+                    </div>
+                    <div style="font-size:0.85rem; color: #aaa; margin-bottom: 5px; text-transform: uppercase;">Items vs Enemy Draft:</div>
+                    <div style="display: flex; flex-wrap: wrap;">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    init();
+</script>
+
+</body>
+</html>
