@@ -15,6 +15,7 @@
             --dota-border: #42464F;
             --win-green: #73D35B;
             --win-green-dark: #2d5a27;
+            --modal-bg: rgba(0, 0, 0, 0.85);
         }
 
         body {
@@ -61,9 +62,10 @@
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; color: var(--dota-gold); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 8px; }
         
-        select {
+        select, input[type="text"] {
             width: 100%; padding: 12px; background: #111; color: #fff;
             border: 1px solid var(--dota-border); border-radius: 3px; outline: none;
+            box-sizing: border-box;
         }
 
         .enemy-slot {
@@ -78,9 +80,15 @@
             background: linear-gradient(to bottom, var(--win-green-dark), var(--win-green));
             color: #000; border: none; font-weight: 900; font-size: 1.1rem;
             text-transform: uppercase; cursor: pointer; transition: 0.2s;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.4); margin-top: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4); margin-top: 15px; border-radius: 3px;
         }
         .btn-analyze:hover { filter: brightness(1.2); }
+
+        .btn-secondary {
+            background: #1a1a1a; color: var(--win-green); border: 1px solid var(--win-green-dark);
+            margin-top: 10px;
+        }
+        .btn-secondary:hover { background: var(--win-green-dark); color: #fff; }
 
         .recommendation-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px;
@@ -116,6 +124,38 @@
         /* Priority Target */
         .target-box { background: rgba(180, 67, 53, 0.1); border-left: 3px solid var(--dota-red); padding: 10px; }
         .target-item { font-size: 0.85rem; color: #ffadad; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+
+        /* MODAL ESTADÍSTICAS (KPIs) */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--modal-bg); z-index: 1000; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: var(--dota-panel); padding: 30px; border-radius: 8px;
+            border: 2px solid var(--win-green-dark); width: 90%; max-width: 800px;
+            max-height: 90vh; overflow-y: auto; position: relative;
+            box-shadow: 0 0 30px rgba(45, 90, 39, 0.4);
+        }
+        .close-btn {
+            position: absolute; top: 15px; right: 20px; color: var(--dota-red-bright);
+            cursor: pointer; font-size: 1.8rem; font-weight: bold; transition: 0.2s;
+        }
+        .close-btn:hover { color: #fff; }
+        
+        .tabs { display: flex; border-bottom: 1px solid var(--dota-border); margin-bottom: 20px; }
+        .tab { padding: 10px 20px; cursor: pointer; color: #888; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; }
+        .tab.active { color: var(--win-green); border-bottom: 2px solid var(--win-green); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .kpi-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
+        .kpi-table th { background: #111; color: var(--dota-gold); padding: 10px; text-align: left; border-bottom: 2px solid var(--win-green-dark); }
+        .kpi-table td { padding: 10px; border-bottom: 1px solid #333; color: var(--dota-text); }
+        .kpi-table tr:hover { background: rgba(255,255,255,0.05); }
+        .win-text { color: var(--win-green); font-weight: bold; }
+        .loss-text { color: var(--dota-red-bright); font-weight: bold; }
 
         footer {
             padding: 30px; text-align: center; background: #111; border-top: 1px solid #222;
@@ -155,6 +195,7 @@
             <div class="enemy-slot"><img id="img-4" class="slot-img"><select class="hero-sel" id="sel-4" onchange="updateIcon(4)"></select></div>
         </div>
         <button class="btn-analyze" onclick="processDraft()">Analizar Estrategia Total</button>
+        <button class="btn-analyze btn-secondary" onclick="openModal()">📊 Mis Estadísticas (KPIs)</button>
     </aside>
 
     <main class="card">
@@ -167,6 +208,78 @@
     </main>
 </div>
 
+<div class="modal-overlay" id="kpiModal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">×</span>
+        <h2 style="color: var(--win-green); margin-top: 0;">Central de Rendimiento (KPIs)</h2>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('registro')">Registrar Partida</div>
+            <div class="tab" onclick="switchTab('historial'); loadKpis();">Mi Historial</div>
+        </div>
+
+        <div id="tab-registro" class="tab-content active">
+            <div class="input-group">
+                <label>Mi Héroe Jugado</label>
+                <select id="kpiMiHeroe"><option value="">Selecciona tu héroe...</option></select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="input-group">
+                    <label>Rol</label>
+                    <select id="kpiRol">
+                        <option value="Pos 1">Pos 1</option><option value="Pos 2">Pos 2</option>
+                        <option value="Pos 3">Pos 3</option><option value="Pos 4">Pos 4</option>
+                        <option value="Pos 5">Pos 5</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Resultado</label>
+                    <select id="kpiResultado">
+                        <option value="Victoria">🏆 Victoria</option>
+                        <option value="Derrota">☠️ Derrota</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Draft Enemigo Enfrentado</label>
+                <input type="text" id="kpiDraftEnemigo" placeholder="Ej: Axe, Lion, Sniper..." readonly style="background: #222; color: #888;">
+                <small style="color: var(--win-green); font-size: 0.7rem;">(Se autocompleta con el panel principal)</small>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="input-group">
+                    <label>K/D/A</label>
+                    <input type="text" id="kpiKda" placeholder="Ej: 12/3/15">
+                </div>
+                <div class="input-group">
+                    <label>Notas Estratégicas</label>
+                    <input type="text" id="kpiNotas" placeholder="Ej: Buen early, mala teamfight al min 30">
+                </div>
+            </div>
+            <button class="btn-analyze" id="btnGuardarKpi" onclick="guardarPartida()">Guardar Partida en Google Sheets</button>
+            <div id="kpiStatus" style="text-align: center; margin-top: 10px; font-weight: bold; color: var(--win-green);"></div>
+        </div>
+
+        <div id="tab-historial" class="tab-content">
+            <div id="historialLoader" style="text-align: center; color: var(--win-green); padding: 20px;">Cargando datos desde Google Sheets...</div>
+            <div style="overflow-x: auto;">
+                <table class="kpi-table" id="tablaHistorial" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Héroe</th>
+                            <th>Rol</th>
+                            <th>Resultado</th>
+                            <th>KDA</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <footer>
     Creado by <span class="signature">"Ary :3"</span>
 </footer>
@@ -175,9 +288,12 @@
     const API = "https://api.opendota.com/api";
     const HERO_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/";
     const ITEM_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/";
+    // TU API DE GOOGLE SHEETS
+    const GOOGLE_SHEETS_API = "https://script.google.com/macros/s/AKfycbw360tafClui0sj_wJis8F_fljHdsy_LLErC_xT_Tfv03V0JjxTt1gt0SM42TQhQFuD/exec";
+    
     let heroesData = [];
 
-    // Protocolos de Combo específicos
+    // Protocolos de Combo específicos (MANTENIDO INTACTO)
     const realCombos = {
         "Axe": ["Blink", "Call", "Blademail", "R"],
         "Legion Commander": ["W", "Blink", "Blademail", "R"],
@@ -192,9 +308,13 @@
         const r = await fetch(`${API}/heroes`);
         heroesData = await r.json();
         heroesData.sort((a,b) => a.localized_name.localeCompare(b.localized_name));
-        document.querySelectorAll('.hero-sel').forEach(s => {
-            s.innerHTML = `<option value="">Vacio</option>` + heroesData.map(h => `<option value="${h.id}">${h.localized_name}</option>`).join('');
-        });
+        
+        // Llenar selectores del analizador y del modal de KPIs
+        const heroOptions = `<option value="">Vacio</option>` + heroesData.map(h => `<option value="${h.id}">${h.localized_name}</option>`).join('');
+        document.querySelectorAll('.hero-sel').forEach(s => s.innerHTML = heroOptions);
+        
+        const kpiOptions = `<option value="">Selecciona tu héroe...</option>` + heroesData.map(h => `<option value="${h.localized_name}">${h.localized_name}</option>`).join('');
+        document.getElementById('kpiMiHeroe').innerHTML = kpiOptions;
     }
 
     function updateIcon(i) {
@@ -203,19 +323,19 @@
         document.getElementById(`img-${i}`).src = h ? `${HERO_IMG}${h.name.replace('npc_dota_hero_', '')}.png` : "";
     }
 
-    // Generador de Build con Timings y Imágenes
+    // Generador de Build con Timings y Imágenes (MANTENIDO INTACTO)
     function getFullBuild(role, enemyDraft) {
         let build = { early: [], core: [], situ: [] };
         
-        if (role <= 2) { // Carry/Mid
+        if (role <= 2) { 
             build.early = [{n: 'Wand', k: 'magic_wand', t: '4m'}, {n: 'Treads', k: 'power_treads', t: '8m'}];
             build.core = [{n: 'Manta', k: 'manta', t: '18m'}, {n: 'BKB', k: 'black_king_bar', t: '23m'}];
             build.situ = [{n: 'MKB', k: 'monkey_king_bar', t: '32m'}, {n: 'Satanic', k: 'satanic', t: '40m'}];
-        } else if (role == 3) { // Offlane
+        } else if (role == 3) { 
             build.early = [{n: 'Bracer', k: 'bracer', t: '3m'}, {n: 'Phase', k: 'phase_boots', t: '7m'}];
             build.core = [{n: 'Blink', k: 'blink', t: '14m'}, {n: 'Blademail', k: 'blade_mail', t: '17m'}];
             build.situ = [{n: 'Cuirass', k: 'assault', t: '30m'}, {n: 'Shiva', k: 'shivas_guard', t: '35m'}];
-        } else { // Support
+        } else { 
             build.early = [{n: 'Boots', k: 'boots', t: '5m'}, {n: 'Wand', k: 'magic_wand', t: '7m'}];
             build.core = [{n: 'Force', k: 'force_staff', t: '18m'}, {n: 'Glimmer', k: 'glimmer_cape', t: '22m'}];
             build.situ = [{n: 'Vessel', k: 'spirit_vessel', t: '25m'}, {n: 'Scythe', k: 'sheepstick', t: '35m'}];
@@ -249,54 +369,8 @@
                 .map(id => ({ id: parseInt(id), wr: scores[id]/enemies.length }))
                 .sort((a,b) => b.wr - a.wr).slice(0, 4);
 
-            // Kill Order Logic
             const enemyHeroes = enemies.map(id => heroesData.find(h => h.id == id));
             const killOrder = [...enemyHeroes].sort((a,b) => {
                 const p = h => (h.roles.includes("Support") ? 5 : 0) + (h.roles.includes("Nuker") ? 2 : 0) - (h.roles.includes("Durable") ? 4 : 0);
                 return p(b) - p(a);
             }).slice(0, 2);
-
-            top.forEach(rec => {
-                const h = heroesData.find(x => x.id === rec.id);
-                const build = getFullBuild(role, enemies);
-                const combo = realCombos[h.localized_name];
-                const cleanName = h.name.replace('npc_dota_hero_', '');
-
-                area.innerHTML += `
-                    <div class="hero-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-                            <div style="display:flex; gap:12px; align-items:center">
-                                <img src="${HERO_IMG}${cleanName}.png" style="width:80px; border:1px solid #444">
-                                <strong style="font-size:1.2rem">${h.localized_name}</strong>
-                            </div>
-                            <span style="color:var(--win-green); font-weight:bold; font-size:1.3rem">${(rec.wr*100).toFixed(1)}% WR</span>
-                        </div>
-
-                        <div class="section-title">Recomendación de Items & Timings</div>
-                        <div class="items-container">
-                            ${build.early.map(i => `<div class="item-card"><img class="item-img" src="${ITEM_IMG}${i.k}.png"><span class="item-time">${i.t}</span><span class="item-name">${i.n}</span></div>`).join('')}
-                            ${build.core.map(i => `<div class="item-card core"><img class="item-img" src="${ITEM_IMG}${i.k}.png"><span class="item-time">${i.t}</span><span class="item-name">${i.n}</span></div>`).join('')}
-                            ${build.situ.map(i => `<div class="item-card situational"><img class="item-img" src="${ITEM_IMG}${i.k}.png"><span class="item-time">${i.t}</span><span class="item-name">${i.n}</span></div>`).join('')}
-                        </div>
-
-                        ${combo ? `
-                            <div class="section-title">Protocolo de Burst</div>
-                            <div class="combo-box">${combo.map(k => `<span class="key">${k}</span>`).join(' ➔ ')}</div>
-                        ` : ''}
-
-                        <div class="section-title">Prioridad de Objetivo (Foco)</div>
-                        <div class="target-box">
-                            ${killOrder.map(e => `<div class="target-item">🎯 Neutralizar a <strong>${e.localized_name}</strong> rápidamente.</div>`).join('')}
-                        </div>
-                    </div>
-                `;
-            });
-
-        } catch(e) { console.error(e); }
-        document.getElementById('loader').style.display = "none";
-    }
-
-    init();
-</script>
-</body>
-</html>
