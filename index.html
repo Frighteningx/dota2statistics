@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dota 2 Tactical Analyzer - Elite Edition</title>
+    <title>Dota 2 Strategic Intelligence - Ary Edition</title>
     <style>
         :root {
             --dota-red: #B44335;
@@ -15,7 +15,7 @@
             --dota-border: #42464F;
             --win-green: #73D35B;
             --win-green-dark: #2d5a27;
-            --combo-blue: #4a90e2;
+            --target-blue: #4a90e2;
         }
 
         body {
@@ -25,6 +25,8 @@
             color: var(--dota-text);
             margin: 0;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         header {
@@ -42,6 +44,7 @@
             padding: 25px;
             max-width: 1700px;
             margin: 0 auto;
+            flex: 1;
         }
 
         @media (max-width: 1100px) { .main-layout { grid-template-columns: 1fr; } }
@@ -54,93 +57,83 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; color: var(--dota-gold); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 5px; }
-        
-        select {
-            width: 100%; padding: 12px; background: #111; color: #fff;
-            border: 1px solid var(--dota-border); border-radius: 3px;
-        }
+        h3 { color: var(--dota-gold); text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 10px; }
 
         .enemy-slot {
             display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
             background: rgba(0,0,0,0.4); padding: 5px; border-radius: 4px;
         }
 
-        .slot-img { width: 60px; height: 34px; border: 1px solid #444; object-fit: cover; }
+        .slot-img { width: 60px; height: 34px; border: 1px solid #444; object-fit: cover; background: #000; }
+
+        select {
+            width: 100%; padding: 12px; background: #111; color: #fff;
+            border: 1px solid var(--dota-border); border-radius: 3px;
+        }
 
         .btn-analyze {
             width: 100%; padding: 18px;
             background: linear-gradient(to bottom, var(--win-green-dark), var(--win-green));
             color: #000; border: none; font-weight: 900; font-size: 1.1rem;
             text-transform: uppercase; cursor: pointer; transition: 0.2s;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4); margin-top: 15px;
         }
-        .btn-analyze:hover { filter: brightness(1.2); transform: translateY(-2px); }
 
         .recommendation-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px;
         }
 
         .hero-card {
             background: #24262b; border-radius: 4px; border: 1px solid var(--dota-border);
-            padding: 20px; position: relative; border-left: 5px solid var(--win-green);
+            padding: 20px; border-left: 5px solid var(--win-green);
         }
 
-        /* Impact Visuals */
-        .header-stats { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .winrate-val { color: var(--win-green); font-size: 1.5rem; font-weight: bold; }
-        .impact-bar { width: 100px; height: 8px; background: #111; border-radius: 4px; overflow: hidden; margin-top: 5px; }
-        .impact-fill { height: 100%; background: var(--win-green); transition: width 1s; }
-
-        /* Build & Combos */
-        .section-title { font-size: 0.75rem; color: var(--dota-gold); text-transform: uppercase; border-bottom: 1px solid #444; margin: 15px 0 10px; padding-bottom: 3px; }
-        .items-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .section-title { font-size: 0.75rem; color: var(--dota-gold); text-transform: uppercase; margin: 15px 0 8px; font-weight: bold; }
         
-        .item-box {
-            background: #111; border: 1px solid #333; padding: 5px; width: 65px; text-align: center; border-radius: 3px;
+        /* Combo UI */
+        .combo-box {
+            display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.4);
+            padding: 8px; border-radius: 4px; border: 1px solid #444; margin-bottom: 10px;
         }
-        .item-box img { width: 50px; height: 37px; }
-        .item-box span { font-size: 0.65rem; display: block; color: var(--win-green); font-weight: bold; }
+        .key { background: #444; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 0.9rem; border: 1px solid #666; }
 
-        /* Combo Visualizer */
-        .combo-sequence {
-            display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3);
-            padding: 12px; border-radius: 6px; border: 1px solid rgba(74, 144, 226, 0.3);
-        }
-        .key-cap {
-            background: linear-gradient(to bottom, #444, #222);
-            border: 1px solid #666; border-radius: 4px;
-            padding: 4px 10px; font-weight: bold; color: #fff;
-            box-shadow: 0 2px 0 #000; font-family: monospace; font-size: 1rem;
-        }
-        .arrow { color: var(--dota-gold); font-weight: bold; }
-        .combo-desc { font-size: 0.8rem; color: var(--combo-blue); margin-top: 5px; font-style: italic; }
+        /* Priority Target UI */
+        .target-list { background: rgba(180, 67, 53, 0.1); border-left: 3px solid var(--dota-red); padding: 10px; margin-top: 10px; }
+        .target-item { font-size: 0.85rem; color: #ffadad; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 
-        .loader { text-align: center; color: var(--win-green); font-size: 1.5rem; display: none; padding: 50px; }
+        /* Win Tips */
+        .tip-box { font-size: 0.85rem; color: var(--win-green); font-style: italic; background: rgba(115, 211, 91, 0.05); padding: 8px; border-radius: 4px; }
+
+        footer {
+            padding: 20px; text-align: center; background: #111; border-top: 1px solid #222;
+            color: #555; font-weight: bold; font-size: 0.9rem;
+        }
+        .signature { color: var(--dota-gold); text-shadow: 0 0 5px rgba(192, 160, 95, 0.3); }
+
+        .item-box { background: #111; border: 1px solid #333; padding: 4px; width: 60px; text-align: center; border-radius: 3px; }
+        .item-box img { width: 45px; height: 33px; }
+        .item-box span { font-size: 0.6rem; display: block; color: var(--win-green); }
+
+        .loader { text-align: center; color: var(--win-green); display: none; padding: 40px; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>DOTA 2 <span>ELITE</span> STRAT</h1>
-    <p style="color: var(--win-green); letter-spacing: 3px;">MAX DAMAGE PROTOCOL & COUNTER-MATRIX</p>
+    <h1>DOTA 2 <span>ARY</span> ANALYZER</h1>
+    <p style="color: var(--dota-gold); font-size: 0.8rem; letter-spacing: 2px;">STRATEGIC KILL ORDER & BUILD MATRIX</p>
 </header>
 
 <div class="main-layout">
     <aside class="card">
-        <div class="input-group">
-            <label>Rol Estratégico</label>
-            <select id="playerRole">
-                <option value="1">Pos 1 - Hard Carry</option>
-                <option value="2">Pos 2 - Midlaner</option>
-                <option value="3">Pos 3 - Offlaner</option>
-                <option value="4">Pos 4 - Soft Support</option>
-                <option value="5">Pos 5 - Hard Support</option>
+        <div style="margin-bottom:20px">
+            <label style="font-size:0.7rem; color:var(--dota-gold); text-transform:uppercase">Tu Posición</label>
+            <select id="roleSel">
+                <option value="core">Core (Pos 1/2/3)</option>
+                <option value="support">Support (Pos 4/5)</option>
             </select>
         </div>
-
-        <h3>Draft Enemigo (Análisis 5v5)</h3>
+        <h3>Draft Enemigo</h3>
         <div id="enemySlots">
             <div class="enemy-slot"><img id="img-0" class="slot-img"><select class="hero-sel" id="sel-0" onchange="updateIcon(0)"></select></div>
             <div class="enemy-slot"><img id="img-1" class="slot-img"><select class="hero-sel" id="sel-1" onchange="updateIcon(1)"></select></div>
@@ -148,136 +141,122 @@
             <div class="enemy-slot"><img id="img-3" class="slot-img"><select class="hero-sel" id="sel-3" onchange="updateIcon(3)"></select></div>
             <div class="enemy-slot"><img id="img-4" class="slot-img"><select class="hero-sel" id="sel-4" onchange="updateIcon(4)"></select></div>
         </div>
-        <button class="btn-analyze" onclick="processDraft()">Ejecutar Análisis</button>
+        <button class="btn-analyze" onclick="processAnalysis()">Generar Estrategia</button>
     </aside>
 
     <main class="card">
-        <div id="loader" class="loader">Procesando Secuencias de Combate...</div>
+        <div id="loader" class="loader">Analizando prioridades de combate...</div>
         <div id="resultsArea" class="recommendation-grid">
-            <div style="text-align: center; grid-column: 1/-1; padding: 50px; color: #666;">
-                Esperando ingreso de Draft enemigo para calcular protocolos de ataque...
-            </div>
+            <div style="text-align: center; grid-column: 1/-1; padding: 50px; color: #555;">Ingresa el draft enemigo para ver la prioridad de ataque.</div>
         </div>
     </main>
 </div>
 
+<footer>
+    Creado by <span class="signature">"Ary :3"</span>
+</footer>
+
 <script>
     const API = "https://api.opendota.com/api";
-    const HERO_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/";
+    const IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/";
     const ITEM_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/";
-    let heroesData = [];
+    let heroes = [];
 
-    // Diccionario de Combos por Héroe (Heurística de Daño Máximo)
-    const comboMatrix = {
-        "Axe": { keys: ["Blink", "R", "W"], desc: "Blink -> Berserker's Call -> Blade Mail -> Culling Blade" },
-        "Phantom Assassin": { keys: ["W", "Q", "Items"], desc: "Phantom Strike -> Fan of Knives -> Abyssals -> Coup de Grace" },
-        "Legion Commander": { keys: ["Blink", "W", "R"], desc: "Press the Attack -> Blink -> Duel -> Blademail" },
-        "Juggernaut": { keys: ["R", "Q"], desc: "Omnislash -> Swift Slash -> Blade Fury (para escape o DPS)" },
-        "Faceless Void": { keys: ["Q", "R", "W"], desc: "Time Walk -> Chronosphere -> Manta/MoM -> Time Dilation" },
-        "Anti-Mage": { keys: ["R"], desc: "Blink -> Abyssals -> Manta -> Mana Void (al final)" },
-        "Tidehunter": { keys: ["R", "Q", "E"], desc: "Blink -> Ravage -> Gush -> Anchor Smash" },
-        "Slark": { keys: ["Q", "W", "Items"], desc: "Dark Pact -> Pounce -> Shadow Dance -> Diffusal" },
-        "default": { keys: ["Q", "W", "E", "R"], desc: "Secuencia estándar de Burst: Iniciación -> CC -> Nukes -> Ultimate" }
+    // Base de datos de Combos Reales (Solo si son específicos)
+    const realCombos = {
+        "Axe": ["Blink", "R", "W"],
+        "Legion Commander": ["W", "Blink", "R"],
+        "Tinker": ["Q", "W", "R", "Q"],
+        "Earthshaker": ["Blink", "R", "Q", "E"],
+        "Invoker": ["W", "W", "W", "R", "Q", "Q", "Q", "R"],
+        "Storm Spirit": ["R", "Atk", "W", "Atk", "Q", "Atk"]
     };
 
     async function init() {
         const r = await fetch(`${API}/heroes`);
-        heroesData = await r.json();
-        heroesData.sort((a,b) => a.localized_name.localeCompare(b.localized_name));
+        heroes = await r.json();
+        heroes.sort((a,b) => a.localized_name.localeCompare(b.localized_name));
         document.querySelectorAll('.hero-sel').forEach(s => {
-            s.innerHTML = `<option value="">Vacio</option>` + heroesData.map(h => `<option value="${h.id}">${h.localized_name}</option>`).join('');
+            s.innerHTML = `<option value="">-</option>` + heroes.map(h => `<option value="${h.id}">${h.localized_name}</option>`).join('');
         });
     }
 
     function updateIcon(i) {
         const id = document.getElementById(`sel-${i}`).value;
-        const h = heroesData.find(x => x.id == id);
-        document.getElementById(`img-${i}`).src = h ? `${HERO_IMG}${h.name.replace('npc_dota_hero_', '')}.png` : "";
+        const h = heroes.find(x => x.id == id);
+        document.getElementById(`img-${i}`).src = h ? `${IMG}${h.name.replace('npc_dota_hero_', '')}.png` : "";
     }
 
-    function calculateBuild(enemyIds, role) {
-        // Lógica simplificada de items (mantenida del paso anterior para coherencia)
-        let build = { early: [], core: [], situ: [] };
-        if(role <= 2) {
-            build.early = [{n: 'Wand', k: 'magic_wand', t: '4m'}, {n: 'Treads', k: 'power_treads', t: '8m'}];
-            build.core = [{n: 'BKB', k: 'black_king_bar', t: '22m'}, {n: 'Manta', k: 'manta', t: '18m'}];
-            build.situ = [{n: 'Abyssal', k: 'abyssal_blade', t: '35m'}, {n: 'Butterfly', k: 'butterfly', t: '40m'}];
-        } else {
-            build.early = [{n: 'Boots', k: 'boots', t: '5m'}, {n: 'Bracer', k: 'bracer', t: '3m'}];
-            build.core = [{n: 'Blink', k: 'blink', t: '15m'}, {n: 'Forcestaff', k: 'force_staff', t: '20m'}];
-            build.situ = [{n: 'Scythe', k: 'sheepstick', t: '35m'}, {n: 'Lotus', k: 'lotus_orb', t: '30m'}];
-        }
-        return build;
-    }
-
-    async function processDraft() {
+    async function processAnalysis() {
         const area = document.getElementById('resultsArea');
-        const role = document.getElementById('playerRole').value;
-        const enemies = Array.from(document.querySelectorAll('.hero-sel')).map(s => s.value).filter(v => v);
+        const role = document.getElementById('roleSel').value;
+        const enemiesIds = Array.from(document.querySelectorAll('.hero-sel')).map(s => s.value).filter(v => v);
 
-        if(!enemies.length) return alert("Selecciona enemigos.");
+        if(!enemiesIds.length) return alert("Selecciona enemigos.");
         document.getElementById('loader').style.display = "block";
         area.innerHTML = "";
 
         try {
-            const promises = enemies.map(id => fetch(`${API}/heroes/${id}/matchups`).then(r => r.json()));
-            const data = await Promise.all(promises);
+            const matchupPromises = enemiesIds.map(id => fetch(`${API}/heroes/${id}/matchups`).then(r => r.json()));
+            const allMatchups = await Promise.all(matchupPromises);
 
             let scores = {};
-            data.forEach(list => {
+            allMatchups.forEach(list => {
                 list.forEach(m => {
                     if(!scores[m.hero_id]) scores[m.hero_id] = 0;
-                    if(m.games_played > 15) scores[m.hero_id] += (m.wins/m.games_played);
+                    if(m.games_played > 10) scores[m.hero_id] += (m.wins/m.games_played);
                 });
             });
 
             const top = Object.keys(scores)
-                .filter(id => !enemies.includes(id))
-                .map(id => ({ id: parseInt(id), score: scores[id]/enemies.length }))
-                .sort((a,b) => b.score - a.score).slice(0, 4);
+                .filter(id => !enemiesIds.includes(id))
+                .map(id => ({ id: parseInt(id), wr: scores[id]/enemiesIds.length }))
+                .sort((a,b) => b.wr - a.wr).slice(0, 4);
+
+            // Determinar Prioridad de Ataque (Heurística)
+            const enemyHeroes = enemiesIds.map(id => heroes.find(h => h.id == id));
+            const killOrder = enemyHeroes.sort((a, b) => {
+                const prio = h => (h.roles.includes("Support") ? 3 : 0) + (h.roles.includes("Nuker") ? 2 : 0) - (h.roles.includes("Durable") ? 4 : 0);
+                return prio(b) - prio(a);
+            }).slice(0, 2);
 
             top.forEach(rec => {
-                const h = heroesData.find(x => x.id === rec.id);
-                const build = calculateBuild(enemies, role);
-                const combo = comboMatrix[h.localized_name] || comboMatrix["default"];
+                const h = heroes.find(x => x.id === rec.id);
+                const combo = realCombos[h.localized_name];
                 const cleanName = h.name.replace('npc_dota_hero_', '');
-
+                
                 area.innerHTML += `
                     <div class="hero-card">
-                        <div class="header-stats">
-                            <div style="display:flex; gap:12px; align-items:center;">
-                                <img src="${HERO_IMG}${cleanName}.png" style="width:90px; border:1px solid var(--dota-border)">
-                                <div>
-                                    <strong style="font-size:1.3rem">${h.localized_name}</strong>
-                                    <div class="impact-bar"><div class="impact-fill" style="width:${(rec.score*100).toFixed(0)}%"></div></div>
-                                </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center">
+                            <div style="display:flex; gap:10px; align-items:center">
+                                <img src="${IMG}${cleanName}.png" style="width:70px">
+                                <strong>${h.localized_name}</strong>
                             </div>
-                            <div class="winrate-val">${(rec.score*100).toFixed(1)}% <small style="font-size:0.7rem; color:#888">WR</small></div>
+                            <span style="color:var(--win-green); font-weight:bold">${(rec.wr*100).toFixed(1)}% WR</span>
                         </div>
 
-                        <div class="section-title">Combo de Ataque (Burst Protocol)</div>
-                        <div class="combo-sequence">
-                            ${combo.keys.map(k => `<span class="key-cap">${k}</span>`).join('<span class="arrow">→</span>')}
-                        </div>
-                        <div class="combo-desc">${combo.desc}</div>
+                        ${combo ? `
+                            <div class="section-title">Protocolo de Burst</div>
+                            <div class="combo-box">${combo.map(k => `<span class="key">${k}</span>`).join(' ➔ ')}</div>
+                        ` : ''}
 
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:15px;">
-                            <div>
-                                <div class="section-title">Core Build</div>
-                                <div class="items-row">
-                                    ${build.core.map(i => `<div class="item-box"><img src="${ITEM_IMG}${i.k}.png"><span>${i.t}</span></div>`).join('')}
+                        <div class="section-title">Prioridad de Ataque en Teamfight</div>
+                        <div class="target-list">
+                            ${killOrder.map(e => `
+                                <div class="target-item">
+                                    <span style="color:var(--dota-red)">[!]</span> Eliminar a <strong>${e.localized_name}</strong> primero.
                                 </div>
-                            </div>
-                            <div>
-                                <div class="section-title">Counters Situacionales</div>
-                                <div class="items-row">
-                                    ${build.situ.map(i => `<div class="item-box"><img src="${ITEM_IMG}${i.k}.png"><span>${i.t}</span></div>`).join('')}
-                                </div>
-                            </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="section-title">Consejo de Victoria</div>
+                        <div class="tip-box">
+                            ${role === 'core' ? 'No inicies si no ves a los supports enemigos. Espera su error.' : 'Guarda tu stun para cancelar el BKB o TP enemigo.'}
                         </div>
                     </div>
                 `;
             });
+
         } catch(e) { console.error(e); }
         document.getElementById('loader').style.display = "none";
     }
