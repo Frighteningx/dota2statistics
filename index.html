@@ -214,8 +214,8 @@
         <h2 style="color: var(--win-green); margin-top: 0;">Central de Rendimiento (KPIs)</h2>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('registro')">Registrar Partida</div>
-            <div class="tab" onclick="switchTab('historial'); loadKpis();">Mi Historial</div>
+            <div class="tab active" onclick="switchTab('registro', this)">Registrar Partida</div>
+            <div class="tab" onclick="switchTab('historial', this); loadKpis();">Mi Historial</div>
         </div>
 
         <div id="tab-registro" class="tab-content active">
@@ -293,7 +293,7 @@
     
     let heroesData = [];
 
-    // Protocolos de Combo específicos (MANTENIDO INTACTO)
+    // Protocolos de Combo específicos
     const realCombos = {
         "Axe": ["Blink", "Call", "Blademail", "R"],
         "Legion Commander": ["W", "Blink", "Blademail", "R"],
@@ -304,17 +304,23 @@
         "Enigma": ["Blink", "Midnight Pulse", "R"]
     };
 
+    // --- FUNCIÓN RESTAURADA Y BLINDADA CON TRY/CATCH ---
     async function init() {
-        const r = await fetch(`${API}/heroes`);
-        heroesData = await r.json();
-        heroesData.sort((a,b) => a.localized_name.localeCompare(b.localized_name));
-        
-        // Llenar selectores del analizador y del modal de KPIs
-        const heroOptions = `<option value="">Vacio</option>` + heroesData.map(h => `<option value="${h.id}">${h.localized_name}</option>`).join('');
-        document.querySelectorAll('.hero-sel').forEach(s => s.innerHTML = heroOptions);
-        
-        const kpiOptions = `<option value="">Selecciona tu héroe...</option>` + heroesData.map(h => `<option value="${h.localized_name}">${h.localized_name}</option>`).join('');
-        document.getElementById('kpiMiHeroe').innerHTML = kpiOptions;
+        try {
+            const r = await fetch(`${API}/heroes`);
+            if (!r.ok) throw new Error("Has excedido el límite de recargas. Espera un minuto.");
+            heroesData = await r.json();
+            heroesData.sort((a,b) => a.localized_name.localeCompare(b.localized_name));
+            
+            const heroOptions = `<option value="">-- Selecciona Héroe --</option>` + heroesData.map(h => `<option value="${h.id}">${h.localized_name}</option>`).join('');
+            document.querySelectorAll('.hero-sel').forEach(s => s.innerHTML = heroOptions);
+            
+            const kpiOptions = `<option value="">Selecciona tu héroe...</option>` + heroesData.map(h => `<option value="${h.localized_name}">${h.localized_name}</option>`).join('');
+            document.getElementById('kpiMiHeroe').innerHTML = kpiOptions;
+        } catch (error) {
+            console.error(error);
+            alert("⚠️ Error cargando la lista de héroes de OpenDota.\nMotivo: " + error.message);
+        }
     }
 
     function updateIcon(i) {
@@ -323,10 +329,8 @@
         document.getElementById(`img-${i}`).src = h ? `${HERO_IMG}${h.name.replace('npc_dota_hero_', '')}.png` : "";
     }
 
-    // Generador de Build con Timings y Imágenes (MANTENIDO INTACTO)
     function getFullBuild(role, enemyDraft) {
         let build = { early: [], core: [], situ: [] };
-        
         if (role <= 2) { 
             build.early = [{n: 'Wand', k: 'magic_wand', t: '4m'}, {n: 'Treads', k: 'power_treads', t: '8m'}];
             build.core = [{n: 'Manta', k: 'manta', t: '18m'}, {n: 'BKB', k: 'black_king_bar', t: '23m'}];
@@ -374,3 +378,151 @@
                 const p = h => (h.roles.includes("Support") ? 5 : 0) + (h.roles.includes("Nuker") ? 2 : 0) - (h.roles.includes("Durable") ? 4 : 0);
                 return p(b) - p(a);
             }).slice(0, 2);
+
+            top.forEach(rec => {
+                const h = heroesData.find(x => x.id === rec.id);
+                const build = getFullBuild(role, enemies);
+                const combo = realCombos[h.localized_name];
+                const cleanName = h.name.replace('npc_dota_hero_', '');
+
+                area.innerHTML += `
+                    <div class="hero-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+                            <div style="display:flex; gap:12px; align-items:center">
+                                <img src="${HERO_IMG}${cleanName}.png" style="width:80px; border:1px solid #444">
+                                <strong style="font-size:1.2rem">${h.localized_name}</strong>
+                            </div>
+                            <span style="color:var(--win-green); font-weight:bold; font-size:1.3rem">${(rec.wr*100).toFixed(1)}% WR</span>
+                        </div>
+
+                        <div class="section-title">Recomendación de Items & Timings</div>
+                        <div class="items-container">
+                            ${build.early.map(i => `<div class="item-card"><img class="item-img" src="${ITEM_IMG}${i.k}.png"><span class="item-time">${i.t}</span><span class="item-name">${i.n}</span></div>`).join('')}
+                            ${build.core.map(i => `<div class="item-card core"><img class="item-img" src="${ITEM_IMG}${i.k}.png"><span class="item-time">${i.t}</span><span class="item-name">${i.n}</span></div>`).join('')}
+                            ${build.situ.map(i => `<div class="item-card situational"><img class="item-img" src="${ITEM_IMG}${i.k}.png"><span class="item-time">${i.t}</span><span class="item-name">${i.n}</span></div>`).join('')}
+                        </div>
+
+                        ${combo ? `
+                            <div class="section-title">Protocolo de Burst</div>
+                            <div class="combo-box">${combo.map(k => `<span class="key">${k}</span>`).join(' ➔ ')}</div>
+                        ` : ''}
+
+                        <div class="section-title">Prioridad de Objetivo (Foco)</div>
+                        <div class="target-box">
+                            ${killOrder.map(e => `<div class="target-item">🎯 Neutralizar a <strong>${e.localized_name}</strong> rápidamente.</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+        } catch(e) { console.error(e); }
+        document.getElementById('loader').style.display = "none";
+    }
+    
+    function openModal() {
+        document.getElementById('kpiModal').style.display = 'flex';
+        const enemies = Array.from(document.querySelectorAll('.hero-sel')).map(s => s.value).filter(v => v);
+        const enemyNames = enemies.map(id => heroesData.find(h => h.id == id).localized_name).join(', ');
+        document.getElementById('kpiDraftEnemigo').value = enemyNames || 'Ninguno seleccionado';
+    }
+
+    function closeModal() {
+        document.getElementById('kpiModal').style.display = 'none';
+        document.getElementById('kpiStatus').innerText = '';
+    }
+
+    // --- FUNCIÓN RESTAURADA PARA EVITAR FALLO DEL OBJETO 'EVENT' ---
+    function switchTab(tabName, element) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        element.classList.add('active');
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    async function guardarPartida() {
+        const btn = document.getElementById('btnGuardarKpi');
+        const statusDiv = document.getElementById('kpiStatus');
+        
+        const payload = {
+            miHeroe: document.getElementById('kpiMiHeroe').value,
+            rol: document.getElementById('kpiRol').value,
+            resultado: document.getElementById('kpiResultado').value,
+            draftEnemigo: document.getElementById('kpiDraftEnemigo').value,
+            kda: document.getElementById('kpiKda').value,
+            notas: document.getElementById('kpiNotas').value
+        };
+
+        if(!payload.miHeroe) return alert("Selecciona tu héroe primero.");
+
+        btn.innerText = "Guardando...";
+        btn.disabled = true;
+        statusDiv.innerText = "";
+
+        try {
+            await fetch(GOOGLE_SHEETS_API, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            
+            statusDiv.innerText = "¡Partida guardada exitosamente en Google Sheets!";
+            document.getElementById('kpiKda').value = '';
+            document.getElementById('kpiNotas').value = '';
+        } catch (error) {
+            statusDiv.style.color = "var(--dota-red-bright)";
+            statusDiv.innerText = "Modo 'no-cors' enviado a Sheets. Verifica tu Excel para confirmar.";
+        } finally {
+            btn.innerText = "Guardar Partida en Google Sheets";
+            btn.disabled = false;
+        }
+    }
+
+    async function loadKpis() {
+        const loader = document.getElementById('historialLoader');
+        const tabla = document.getElementById('tablaHistorial');
+        const tbody = document.getElementById('tablaBody');
+        
+        loader.style.display = 'block';
+        tabla.style.display = 'none';
+        tbody.innerHTML = '';
+
+        try {
+            const response = await fetch(GOOGLE_SHEETS_API);
+            const data = await response.json();
+
+            if(data.length === 0) {
+                loader.innerText = "Aún no tienes partidas registradas.";
+                return;
+            }
+
+            const ultimosJuegos = data.reverse().slice(0, 15);
+            
+            ultimosJuegos.forEach(row => {
+                const date = new Date(row['Fecha']).toLocaleDateString();
+                const resClass = row['Resultado'] === 'Victoria' ? 'win-text' : 'loss-text';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${date}</td>
+                        <td style="font-weight:bold">${row['Mi Héroe']}</td>
+                        <td>${row['Rol Jugado']}</td>
+                        <td class="${resClass}">${row['Resultado']}</td>
+                        <td>${row['KDA'] || '-'}</td>
+                        <td style="font-size:0.75rem; color:#888">${row['Notas / MVP'] || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            loader.style.display = 'none';
+            tabla.style.display = 'table';
+
+        } catch (error) {
+            loader.innerText = "Error cargando los datos. Asegúrate de que la API está publicada para 'Cualquier persona'.";
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
