@@ -18,7 +18,8 @@
             --modal-bg: rgba(0, 0, 0, 0.85);
         }
 
-        body {
+        /* CURSOR DE DOTA 2 GLOBAL */
+        body, html {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--dota-dark);
             background-image: radial-gradient(circle at 50% 0%, #302626 0%, transparent 60%);
@@ -27,6 +28,12 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            cursor: url('https://cur.cursors-4u.net/games/gam-11/gam1098.cur'), default !important;
+        }
+
+        /* CURSOR PARA ELEMENTOS INTERACTIVOS */
+        button, select, input, .tab, .close-btn {
+            cursor: url('https://cur.cursors-4u.net/games/gam-11/gam1098.cur'), pointer !important;
         }
 
         header {
@@ -65,7 +72,15 @@
         select, input[type="text"] {
             width: 100%; padding: 12px; background: #111; color: #fff;
             border: 1px solid var(--dota-border); border-radius: 3px; outline: none;
-            box-sizing: border-box;
+            box-sizing: border-box; transition: all 0.2s;
+        }
+
+        /* NAVEGACIÓN POR TECLADO (A11Y) - EL FOCO VISUAL SE RESTAURA AQUÍ */
+        select:focus-visible, input[type="text"]:focus-visible, button:focus-visible, .tab:focus-visible, .close-btn:focus-visible {
+            outline: 2px solid var(--win-green) !important;
+            outline-offset: 2px;
+            border-color: var(--win-green);
+            box-shadow: 0 0 12px rgba(115, 211, 91, 0.6);
         }
 
         .enemy-slot {
@@ -79,7 +94,7 @@
             width: 100%; padding: 18px;
             background: linear-gradient(to bottom, var(--win-green-dark), var(--win-green));
             color: #000; border: none; font-weight: 900; font-size: 1.1rem;
-            text-transform: uppercase; cursor: pointer; transition: 0.2s;
+            text-transform: uppercase; transition: 0.2s;
             box-shadow: 0 5px 15px rgba(0,0,0,0.4); margin-top: 15px; border-radius: 3px;
         }
         .btn-analyze:hover { filter: brightness(1.2); }
@@ -125,6 +140,12 @@
         .target-box { background: rgba(180, 67, 53, 0.1); border-left: 3px solid var(--dota-red); padding: 10px; }
         .target-item { font-size: 0.85rem; color: #ffadad; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 
+        /* Dinamic Tips UI */
+        .tip-box { background: rgba(115, 211, 91, 0.05); border-left: 3px solid var(--win-green); padding: 10px 15px; border-radius: 4px; font-size: 0.85rem; margin-top: 5px; }
+        .tip-box ul { margin: 0; padding-left: 15px; color: var(--dota-text); }
+        .tip-box li { margin-bottom: 6px; line-height: 1.3; }
+        .tip-box li strong { color: var(--win-green); }
+
         /* MODAL ESTADÍSTICAS (KPIs) */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -139,12 +160,12 @@
         }
         .close-btn {
             position: absolute; top: 15px; right: 20px; color: var(--dota-red-bright);
-            cursor: pointer; font-size: 1.8rem; font-weight: bold; transition: 0.2s;
+            cursor: pointer; font-size: 1.8rem; font-weight: bold; transition: 0.2s; outline: none;
         }
         .close-btn:hover { color: #fff; }
         
         .tabs { display: flex; border-bottom: 1px solid var(--dota-border); margin-bottom: 20px; }
-        .tab { padding: 10px 20px; cursor: pointer; color: #888; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; }
+        .tab { padding: 10px 20px; color: #888; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; outline: none; }
         .tab.active { color: var(--win-green); border-bottom: 2px solid var(--win-green); }
         
         .tab-content { display: none; }
@@ -210,12 +231,12 @@
 
 <div class="modal-overlay" id="kpiModal">
     <div class="modal-content">
-        <span class="close-btn" onclick="closeModal()">×</span>
+        <span class="close-btn" tabindex="0" onclick="closeModal()" onkeydown="if(event.key==='Enter') closeModal()">×</span>
         <h2 style="color: var(--win-green); margin-top: 0;">Central de Rendimiento (KPIs)</h2>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('registro', this)">Registrar Partida</div>
-            <div class="tab" onclick="switchTab('historial', this); loadKpis();">Mi Historial</div>
+            <div class="tab active" tabindex="0" onclick="switchTab('registro', this)" onkeydown="if(event.key==='Enter') switchTab('registro', this)">Registrar Partida</div>
+            <div class="tab" tabindex="0" onclick="switchTab('historial', this); loadKpis();" onkeydown="if(event.key==='Enter') { switchTab('historial', this); loadKpis(); }">Mi Historial</div>
         </div>
 
         <div id="tab-registro" class="tab-content active">
@@ -288,12 +309,10 @@
     const API = "https://api.opendota.com/api";
     const HERO_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/";
     const ITEM_IMG = "https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/";
-    // TU API DE GOOGLE SHEETS
     const GOOGLE_SHEETS_API = "https://script.google.com/macros/s/AKfycbw360tafClui0sj_wJis8F_fljHdsy_LLErC_xT_Tfv03V0JjxTt1gt0SM42TQhQFuD/exec";
     
     let heroesData = [];
 
-    // Protocolos de Combo específicos
     const realCombos = {
         "Axe": ["Blink", "Call", "Blademail", "R"],
         "Legion Commander": ["W", "Blink", "Blademail", "R"],
@@ -304,7 +323,17 @@
         "Enigma": ["Blink", "Midnight Pulse", "R"]
     };
 
-    // --- FUNCIÓN RESTAURADA Y BLINDADA CON TRY/CATCH ---
+    // --- NUEVO: DICCIONARIO DE CONSEJOS MICRO-GAME ---
+    const heroTips = {
+        "Axe": "Utiliza la niebla de guerra (Fog of War) para iniciar, nunca camines de frente.",
+        "Legion Commander": "Gana duelos tempranos con tu equipo, no farmees selva ciegamente.",
+        "Phantom Assassin": "Espera a que los supports enemigos gasten sus stuns antes de entrar a la pelea.",
+        "Earthshaker": "Tu Fisura puede bloquear caminos y arruinar el escape del enemigo.",
+        "Juggernaut": "Usa Blade Fury para aplicar TP si te emboscan sin control de masas fuerte.",
+        "Faceless Void": "Comunícate por micrófono antes de tirar Chronosphere para no atrapar aliados.",
+        "Enigma": "A veces, la amenaza de tener Black Hole asusta más que usarlo. Haz que duden."
+    };
+
     async function init() {
         try {
             const r = await fetch(`${API}/heroes`);
@@ -347,6 +376,34 @@
         return build;
     }
 
+    // --- NUEVO: FUNCIÓN DE CONSEJOS DINÁMICOS MULTIVARIABLES ---
+    function getDynamicTips(heroName, role, enemyDraft) {
+        let tips = [];
+        
+        // 1. Consejo basado en Rol
+        if(role <= 2) tips.push("<strong>Prioridad de Core:</strong> Asegura tu farm temprano y no sacrifiques tu vida por un soporte.");
+        else if(role == 3) tips.push("<strong>Prioridad de Offlane:</strong> Sé la primera línea, absorbe el daño y rompe el posicionamiento enemigo.");
+        else tips.push("<strong>Prioridad de Support:</strong> Controla la visión (Wards) y escóndete en las peleas para poder salvar a tu equipo.");
+
+        // 2. Consejo basado en el Héroe
+        if(heroTips[heroName]) {
+            tips.push(`<strong>Micro-Game:</strong> ${heroTips[heroName]}`);
+        } else {
+            tips.push("<strong>Posicionamiento:</strong> Mantén tu distancia óptima calculando el rango de tus habilidades y las del enemigo.");
+        }
+
+        // 3. Consejo basado en el Draft Enemigo (Counters directos)
+        let hasEvasion = enemyDraft.some(h => ["Phantom Assassin", "Windranger", "Tinker", "Riki", "Brewmaster"].includes(h.localized_name));
+        let hasHeal = enemyDraft.some(h => ["Necrophos", "Huskar", "Alchemist", "Dazzle", "Witch Doctor"].includes(h.localized_name));
+        let hasIllusion = enemyDraft.some(h => ["Phantom Lancer", "Naga Siren", "Chaos Knight", "Terrorblade"].includes(h.localized_name));
+
+        if(hasEvasion) tips.push("<strong>Counter-Draft:</strong> Alta evasión detectada. Asegúrate de sacar MKB o un ítem de 'True Strike' rápido.");
+        if(hasHeal) tips.push("<strong>Counter-Draft:</strong> Mucha curación/robo de vida enemigo. Es vital un Spirit Vessel o Shiva's Guard.");
+        if(hasIllusion) tips.push("<strong>Counter-Draft:</strong> Juegan con ilusiones. Identifica al verdadero antes de usar tu daño fuerte (Burst).");
+
+        return tips.map(t => `<li>${t}</li>`).join('');
+    }
+
     async function processDraft() {
         const area = document.getElementById('resultsArea');
         const role = document.getElementById('playerRole').value;
@@ -384,6 +441,9 @@
                 const build = getFullBuild(role, enemies);
                 const combo = realCombos[h.localized_name];
                 const cleanName = h.name.replace('npc_dota_hero_', '');
+                
+                // Generando consejos dinámicos para este héroe
+                const dynamicTips = getDynamicTips(h.localized_name, role, enemyHeroes);
 
                 area.innerHTML += `
                     <div class="hero-card">
@@ -411,6 +471,11 @@
                         <div class="target-box">
                             ${killOrder.map(e => `<div class="target-item">🎯 Neutralizar a <strong>${e.localized_name}</strong> rápidamente.</div>`).join('')}
                         </div>
+
+                        <div class="section-title">Consejos Estratégicos</div>
+                        <div class="tip-box">
+                            <ul>${dynamicTips}</ul>
+                        </div>
                     </div>
                 `;
             });
@@ -418,7 +483,7 @@
         } catch(e) { console.error(e); }
         document.getElementById('loader').style.display = "none";
     }
-    
+
     function openModal() {
         document.getElementById('kpiModal').style.display = 'flex';
         const enemies = Array.from(document.querySelectorAll('.hero-sel')).map(s => s.value).filter(v => v);
@@ -431,7 +496,6 @@
         document.getElementById('kpiStatus').innerText = '';
     }
 
-    // --- FUNCIÓN RESTAURADA PARA EVITAR FALLO DEL OBJETO 'EVENT' ---
     function switchTab(tabName, element) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
